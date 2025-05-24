@@ -9,6 +9,7 @@ import torch.nn.functional as F
 from torch.optim import AdamW
 from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
+from logger import Logger
 # from transformers import get_cosine_schedule_with_warmup
 
 import wandb
