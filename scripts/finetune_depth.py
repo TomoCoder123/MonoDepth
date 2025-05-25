@@ -57,7 +57,10 @@ def train_depth_model(
             n_frozen += 1
         else: 
             n_trainable += 1
-    Logger.info(f"Free")
+    Logger.info(f"Freezing {n_frozen} parameters, {n_trainable} trainable", name = model.name)
+    optimizer = AdamW(
+       
+    )
 
 
 
