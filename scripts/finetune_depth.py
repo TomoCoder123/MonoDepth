@@ -59,10 +59,31 @@ def train_depth_model(
             n_trainable += 1
     Logger.info(f"Freezing {n_frozen} parameters, {n_trainable} trainable", name = model.name)
     optimizer = AdamW(
-       
+        [
+            {"params:" [
+                param
+                for name, param in model.model.named_parameters()
+                if "neck" in name and param.requires_grad
+            ], 
+            "lr": learning_rate *5,
+            }, {
+                "params": [
+                    param
+                    for name, param in model.model.named_parameters()
+                    if "head" in name and param.requires_grad
+                ],
+                "lr": learning_rate * 10,
+            },
+        ], 
+        lr = learning_rate,
+        weight_decay = weight_decay,
     )
+def main():
+    
 
 
+if __name__ == "__main__":
+    main()
 
 
 
