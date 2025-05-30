@@ -1,6 +1,10 @@
 from munch import Munch, munchify
 from typing import Dict, Tuple, TypeVar, Union
 from pathlib import Path
+from logger import Logger
+
+BASEDIR = Path(__file__).parent.parent
+SEARCH_DIRS = [BASEDIR]
 class MunchConfig(Munch):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
