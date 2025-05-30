@@ -1,3 +1,6 @@
+import os 
+import sys
+# sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -7,6 +10,8 @@ from transformers import ( #hugging face transformers libraray
     DPTForSemanticSegmentation,  #semantic segmentation model
     pipeline  #preprocessing, inference, and post processing into a single function
 )
+
+from scripts.utils import Config, load_config
 class DepthModel:
     """Base class for depth estimation models.
 
@@ -19,4 +24,7 @@ class DepthModel:
     """
     DEPTH_MODEL_DICT = {}
     def __init__(self, config: Config):
+        self.config = load_config(config)
+        self.model :torch.nn.Model = None
+        
         
