@@ -129,7 +129,19 @@ def field_of_view2focal_length(
             (res[0] / 2) / np.tan(fov[0] / 2),
             (res[1] / 2) / np.tan(fov[1] / 2),
         )
-    
+
+
+def focal_length2field_of_view(
+    res: Union[int, Tuple[int, int]], focal_length: Union[float, Tuple[float, float]]
+) -> Tuple[float, float]:
+    if isinstance(res, int):
+        return 2 * np.arctan(res / (2 * focal_length))
+    else:
+        return (
+            2 * np.arctan(res[0] / (2 * focal_length[0])),
+            2 * np.arctan(res[1] / (2 * focal_length[1])),
+        )
+
 def main():
     # image = read_pfm('memorial.pfm')
     # plt.imshow(image)
