@@ -2,9 +2,26 @@ from munch import Munch, munchify
 from typing import Dict, Tuple, TypeVar, Union
 from pathlib import Path
 from logger import Logger
+import torch 
+
+from pathlib import Path
+import numpy as np
+import struct
+import matplotlib.pyplot as plt
 
 BASEDIR = Path(__file__).parent.parent
 SEARCH_DIRS = [BASEDIR]
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+FRONT_LEFT_UP_T_OPENCV = torch.tensor(
+    [
+        [+0.0, +0.0, +1.0, +0.0],
+        [-1.0, +0.0, +0.0, +0.0],
+        [+0.0, -1.0, +0.0, +0.0],
+        [+0.0, +0.0, +0.0, +1.0],
+    ],
+    device="cpu",
+)
+OPENCV_T_FRONT_LEFT_UP = torch.linalg.inv(FRONT_LEFT_UP_T_OPENCV)
 class MunchConfig(Munch):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -76,3 +93,44 @@ def load_config(config: Config) -> Config:
     # Assign default name if not provided
     if "name" not in cfg:
         cfg["name"] = key
+
+
+
+def read_pfm(filename):
+    with Path(filename).open('rb') as pfm_file:
+
+        line1, line2, line3 = (pfm_file.readline().decode('latin-1').strip() for _ in range(3))
+        assert line1 in ('PF', 'Pf')
+        
+        channels = 3 if "PF" in line1 else 1
+        width, height = (int(s) for s in line2.split())
+        scale_endianess = float(line3)
+        bigendian = scale_endianess > 0
+        scale = abs(scale_endianess)
+
+        buffer = pfm_file.read()
+        samples = width * height * channels
+        assert len(buffer) == samples * 4
+        
+        fmt = f'{"<>"[bigendian]}{samples}f'
+        decoded = struct.unpack(fmt, buffer)
+        shape = (height, width, 3) if channels == 3 else (height, width)
+        return np.flipud(np.reshape(decoded, shape)) * scale
+
+
+
+def field_of_view2focal_length(
+    res: Union[int, Tuple[int, int]], fov: Union[float, Tuple[float, float]]
+) -> Tuple[float, float]:
+    if isinstance(res, int):
+        return (res / 2) / np.tan(fov / 2)
+    else:
+        return (
+            (res[0] / 2) / np.tan(fov[0] / 2),
+            (res[1] / 2) / np.tan(fov[1] / 2),
+        )
+    
+def main():
+    # image = read_pfm('memorial.pfm')
+    # plt.imshow(image)
+    # plt.show()

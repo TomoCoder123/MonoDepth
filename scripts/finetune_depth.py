@@ -16,6 +16,8 @@ import wandb
 from models.depth import DepthModel
 from models.depth import  ScaleInvariantLoss, compute_depth_metrics
 from environment import Environment
+from camera import Camera
+
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 class Open3DDataset(Dataset):
     def __init__(
@@ -153,6 +155,7 @@ def train_depth_model(
     num_training_steps = len(train_loader) * num_epochs
     num_warmup_steps = int(num_training_steps * warmup_epochs)
     scheduler = get_cosine_schedule_with_warmup(optimizer, num_warmup_steps = num_warmup_steps, num_training_steps = num_training_steps)
+
     #Next Steps: Finish the training function, understand how the model is created and works,
     # Create the dataset, find a way to obtain the lusnar dataset, import the model mono4Depth
 def main():
