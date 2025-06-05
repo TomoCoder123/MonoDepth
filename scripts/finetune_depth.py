@@ -201,8 +201,81 @@ def train_depth_model(
                         "train/learning_rate": scheduler.get_last_lr()[0],
                     }
                 )
-         
+        train_loss /= len(train_loader)
+        train_metrics = {k: v / len(train_loader) for k, v in train_metrics.items()}
+        model.model.eval()
+        val_loss = 0
+        val_metrics = {
+            "abs_rel": 0.0,
+            "rmse": 0.0,
+            "rmse_log": 0.0,
+            "a1": 0.0,
+            "a2": 0.0,
+            "a3": 0.0,
+        }
+        with torch.no_grad():
+            for batch_idx, (rgb, depth_gt) in enumerate(tqdm(val_loader, desc = "Validation")):
+                rgb = rgb.to(device)
+                depth_gt = depth_gt.to(device)
+                
+                with torch.amp.autocast(device_type="cuda", dtype=torch.float16):
+                    depth_pred = model.compute_depth(rgb)
+                    loss = criterion(depth_pred, depth_gt)
 
+                metrics = compute_depth_metrics(depth_pred, depth_gt)
+                for k, v in metrics.items():
+                    val_metrics[k] += v
+
+                val_loss += loss.item()
+
+                if batch_idx == 0:
+                    grid = create_visualization_grid(rgb, depth_gt, depth_pred)
+                    wandb.log({"val/visualization": wandb.Image(grid)})
+        val_loss /= len(val_loader)
+        val_metrics = {k: v / len(val_loader) for k, v in val_metrics.items()}
+
+        # Log metrics to wandb
+        wandb.log(
+            {
+                "train/loss": train_loss,
+                "val/loss": val_loss,
+                **{f"train/{k}": v for k, v in train_metrics.items()},
+                **{f"val/{k}": v for k, v in val_metrics.items()},
+                "epoch": epoch + 1,
+            }
+        )
+        # Print results
+        print(f"\nEpoch {epoch + 1}/{num_epochs}")
+        print(f"Train Loss: {train_loss:.4f}")
+        print("Train Metrics:", {k: f"{v:.4f}" for k, v in train_metrics.items()})
+        print(f"Val Loss: {val_loss:.4f}")
+        print("Val Metrics:", {k: f"{v:.4f}" for k, v in val_metrics.items()})
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            patience_counter = 0
+            best_model_state = model.model.state_dict().copy()
+            save_path = os.path.join(save_dir, filename) ### make sure I get this right
+            torch.save(best_model_state, save_path)
+            print(f"Saved best model to {save_path}")
+        else:
+            patience_counter += 1
+            print(f"Validation loss did not improve. Patience: {patience_counter}/{patience}")
+
+            if patience_counter >= patience:
+                print("Early stopping triggered")
+                # Restore best model
+                model.model.load_state_dict(best_model_state)
+                break
+    val_loss /= len(val_loader)
+    val_metrics = {k: v / len(val_loader) for k, v in val_metrics.items()}
+
+    # Log metrics to wandb
+    wandb.log({"val/loss": val_loss, **{f"val/{k}": v for k, v in val_metrics.items()}})
+
+    # Close wandb
+    wandb.finish()
+    
+        
 
 
 
