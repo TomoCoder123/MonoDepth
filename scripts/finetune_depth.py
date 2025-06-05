@@ -17,8 +17,8 @@ from transformers import get_cosine_schedule_with_warmup
 import wandb
 from models.depth import DepthModel
 from models.depth import ScaleInvariantLoss, compute_depth_metrics
-from environment import Environment
-from camera import Camera
+from scripts.environment import Environment
+from scripts.camera import Camera
 from scripts.utils import read_pfm
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")

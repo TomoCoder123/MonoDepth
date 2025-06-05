@@ -3,7 +3,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from utils import (
+from scripts.utils import (
     DEVICE,
     FRONT_LEFT_UP_T_OPENCV,
     Config,

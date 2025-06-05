@@ -1,5 +1,5 @@
 from typing import Dict, Type
-from utils import Config, load_config
+from scripts.utils import Config, load_config
 
 class Environment:
     """Base class for lunar environment simulation.
