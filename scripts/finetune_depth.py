@@ -19,6 +19,34 @@ from environment import Environment
 from camera import Camera
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+def create_visualization_grid(rgb, depth_gt, depth_pred, max_samples=4):
+    """Create a vertical concatenation of RGB, GT depth, and predicted depth images."""
+    # Convert tensors to numpy
+    rgb_np = rgb[:max_samples].cpu().permute(0, 2, 3, 1).numpy()  # BCHW -> BHWC
+    depth_gt_np = depth_gt[:max_samples].cpu().numpy()
+    depth_pred_np = depth_pred[:max_samples].detach().cpu().numpy()
+
+    # Ensure RGB is in [0, 1] range
+    rgb_np = np.clip(rgb_np, 0, 1)
+
+    # Convert to uint8
+    rgb_np = (rgb_np * 255).astype(np.uint8)
+
+    # Visualize depths
+    depth_gt_viz = np.stack([visualize_depth(d) for d in depth_gt_np])
+    depth_pred_viz = np.stack([visualize_depth(d) for d in depth_pred_np])
+
+    # Concatenate vertically for each sample
+    samples = []
+    for i in range(len(rgb_np)):
+        sample = np.concatenate([rgb_np[i], depth_gt_viz[i], depth_pred_viz[i]], axis=0)
+        samples.append(sample)
+
+    # Concatenate samples horizontally
+    grid = np.concatenate(samples, axis=1)
+
+    return grid
+
 class Open3DDataset(Dataset):
     def __init__(
         self, n_images, cam_config, env_config, xlims, ylims, hlims, azlims, ellims, mode="train"
