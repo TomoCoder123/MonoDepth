@@ -155,6 +155,56 @@ def train_depth_model(
     num_training_steps = len(train_loader) * num_epochs
     num_warmup_steps = int(num_training_steps * warmup_epochs)
     scheduler = get_cosine_schedule_with_warmup(optimizer, num_warmup_steps = num_warmup_steps, num_training_steps = num_training_steps)
+    criterion = ScaleInvariantLoss()
+    scaler = torch.amp.GradScaler()
+
+    best_val_loss = float("inf")
+    patience_counter = 0
+    best_model_state = None
+
+    # Training Loop
+    for epoch in range(num_epochs):
+        model.model.train()
+        train_loss = 0
+        train_metrics=  { 
+            "abs_rel": 0.0,
+            "rmse": 0.0,
+            "rmse_log": 0.0,
+            "a1": 0.0,
+            "a2": 0.0,
+            "a3": 0.0,
+            }
+        for batch_idx, (rgb, depth_gt) in enumerate(tqdm(train_loader, desc=f"Epoch{epoch+1}")):
+            rgb = rgb.to(device)     
+            depth_gt = depth_gt.to(device)
+            
+            with torch.amp.autocast(device_type="cuda", dtype=torch.float16):
+                depth_pred = model.compute_depth(rgb)
+                loss = criterion(depth_pred, depth_gt)
+            optimizer.zero_grad()
+            scaler.scale(loss).backward()
+
+            scaler.unscale_(optimizer)
+            torch.nn.utils.clip_grad_norm_(model.model.parameters(), max_norm =1.0)
+            scaler.step(optimizer)
+            scaler.update()
+            scheduler.step()
+            metrics = compute_depth_metrics(depth_pred, depth_gt)
+            for k, v in metrics.items():
+                train_metrics[k] += v
+            train_loss += loss.item()
+            if batch_idx == 0:
+                grid = create_visualization_grid(rgb, depth_gt, depth_pred):
+                wandb.log(
+                    {
+                        "train/visualization": wandb.Image(grid),
+                        "train/learning_rate": scheduler.get_last_lr()[0],
+                    }
+                )
+         
+
+
+
 
     #Next Steps: Finish the training function, understand how the model is created and works,
     # Create the dataset, find a way to obtain the lusnar dataset, import the model mono4Depth
@@ -237,6 +287,8 @@ def main():
         size=config["size"],
         patience=5,
     )
+
+
 
 
     
