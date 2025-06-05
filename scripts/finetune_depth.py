@@ -377,25 +377,28 @@ def main():
     # Configuration ???where does this come from
     
     data_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../../shared/data_raw/LuSNAR/Moon_1/image0/'))
-    rgb_dir = os.path.join(data_path,'depth')
-    depth_dir = os.path.join(data_path, 'rgb')
+
+    rgb_dir = Path(os.path.join(data_path,'rgb'))
+    depth_dir = Path(os.path.join(data_path, 'depth'))
     # !!!Create but for the other datset.
+    print(depth_dir)
     dataset = "LuSNAR"
     if dataset=="LuSNAR":
-        print(file)
+        
         root_dir = Path(data_path)
         data_list = []
         count = 0
-        for file in root_dir.glob("*.pfm"):    
-            added_path = '../../../../shared/data_raw/LuSNAR/Moon_1/image0/' + f"depth/{file}"
+
+        for file in depth_dir.glob("*.pfm"):    
+            added_path = f"{file}"
             absolute_filepath = os.path.abspath(os.path.join(os.path.dirname(__file__),added_path))
-            if count == 0:
-                print(file)
-                print(added_path)
-                print(absolute_filepath)
-            
             data_list.append(absolute_filepath)
+        print(data_list[0])
         image = read_pfm(data_list[0])
+        # print(image)
+        print("plotting")
+        plt.plot([1,2,3,2,4])
+        plt.show()
         plt.imshow(image)
         plt.show()
 

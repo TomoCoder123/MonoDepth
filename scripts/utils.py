@@ -116,6 +116,7 @@ def read_pfm(filename):
 
         buffer = pfm_file.read()
         samples = width * height * channels
+        print(samples)
         assert len(buffer) == samples * 4
         
         fmt = f'{"<>"[bigendian]}{samples}f'
