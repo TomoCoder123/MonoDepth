@@ -1,13 +1,19 @@
 from munch import Munch, munchify
 from typing import Dict, Tuple, TypeVar, Union
 from pathlib import Path
-from logger import Logger
+from scripts.logger import Logger
 import torch 
 
 from pathlib import Path
 import numpy as np
 import struct
 import matplotlib.pyplot as plt
+import sys
+import yaml
+import os
+
+#sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 
 BASEDIR = Path(__file__).parent.parent
 SEARCH_DIRS = [BASEDIR]
@@ -35,7 +41,7 @@ def load_config(config: Config) -> Config:
         return None
 
     # Type check
-    if isinstance(config, Dict):
+    if isinstance(config, Dict): # if not a MunchConfig, turns into a Munch
         config = munchify(config, factory=MunchConfig)
     if isinstance(config, str):
         config = Path(config)
@@ -43,7 +49,7 @@ def load_config(config: Config) -> Config:
         raise ValueError(f"Invalid config: {config}")
 
     # Load config
-    if isinstance(config, Path):
+    if isinstance(config, Path): #processing Open3D yaml files
         # Add to search paths
         if (
             config.is_absolute()
@@ -142,7 +148,23 @@ def focal_length2field_of_view(
             2 * np.arctan(res[1] / (2 * focal_length[1])),
         )
 
+# def read_monodepth_dataset(path: str):
+#     img_paths = [os.path.join(rgb_dir, f) for f in filenames]
+#     mask_paths = [os.path.join(depth_dir, f) for f in filenames]
+#     data_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../../shared/data_raw/LuSNAR/Moon_1/image0/'))
+#     rgb_dir = os.path.join(data_path,'depth')
+#     depth_dir = os.path.join(data_path, 'rgb')
+
+#     print("nothing")
+    
+
+
 def main():
     # image = read_pfm('memorial.pfm')
     # plt.imshow(image)
     # plt.show()
+    data_path = ""
+    # read_monodepth_dataset(data_path)
+
+if __name__ == "__main__":
+    main()

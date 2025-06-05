@@ -63,46 +63,46 @@ class ScaleInvariantLoss(torch.nn.Module):
             loss = mse - self.alpha * (mean_diff * mean_diff)
             return loss
             
-    def compute_depth_metrics(pred, target):
-        """Compute depth estimation metrics.
+def compute_depth_metrics(pred, target):
+    """Compute depth estimation metrics.
 
-        Args:
-            pred: Predicted depth map
-            target: Ground truth depth map
-            mask: Optional mask for valid pixels
+    Args:
+        pred: Predicted depth map
+        target: Ground truth depth map
+        mask: Optional mask for valid pixels
 
-        Returns:
-            dict: Dictionary containing metrics
-        """
-        # Ensure inputs are positive
-        pred = torch.clamp(pred, min=1e-6)
-        target = torch.clamp(target, min=1e-6)
-        mask = ~torch.isnan(target) & ~torch.isinf(target)
-        n_valid = torch.sum(mask) + 1e-6
+    Returns:
+        dict: Dictionary containing metrics
+    """
+    # Ensure inputs are positive
+    pred = torch.clamp(pred, min=1e-6)
+    target = torch.clamp(target, min=1e-6)
+    mask = ~torch.isnan(target) & ~torch.isinf(target)
+    n_valid = torch.sum(mask) + 1e-6
 
-        diff = torch.where(mask, pred - target, torch.zeros_like(pred))
-        log_diff = torch.where(mask, torch.log(pred) - torch.log(target), torch.zeros_like(pred))
-        target_masked = torch.where(mask, target, torch.ones_like(target))
+    diff = torch.where(mask, pred - target, torch.zeros_like(pred))
+    log_diff = torch.where(mask, torch.log(pred) - torch.log(target), torch.zeros_like(pred))
+    target_masked = torch.where(mask, target, torch.ones_like(target))
 
-        # Compute metrics
-        abs_rel = torch.sum(torch.abs(diff) / target_masked) / n_valid
-        rmse = torch.sqrt(torch.sum(diff * diff) / n_valid)
-        rmse_log = torch.sqrt(torch.sum(log_diff * log_diff) / n_valid)
+    # Compute metrics
+    abs_rel = torch.sum(torch.abs(diff) / target_masked) / n_valid
+    rmse = torch.sqrt(torch.sum(diff * diff) / n_valid)
+    rmse_log = torch.sqrt(torch.sum(log_diff * log_diff) / n_valid)
 
-        # Threshold accuracy
-        thresh = torch.maximum((target / pred), (pred / target))
-        a1 = torch.sum((thresh < 1.25).float()) / n_valid
-        a2 = torch.sum((thresh < 1.25**2).float()) / n_valid
-        a3 = torch.sum((thresh < 1.25**3).float()) / n_valid
+    # Threshold accuracy
+    thresh = torch.maximum((target / pred), (pred / target))
+    a1 = torch.sum((thresh < 1.25).float()) / n_valid
+    a2 = torch.sum((thresh < 1.25**2).float()) / n_valid
+    a3 = torch.sum((thresh < 1.25**3).float()) / n_valid
 
-        return {
-            "abs_rel": abs_rel.item(),
-            "rmse": rmse.item(),
-            "rmse_log": rmse_log.item(),
-            "a1": a1.item(),
-            "a2": a2.item(),
-            "a3": a3.item(),
-        }
+    return {
+        "abs_rel": abs_rel.item(),
+        "rmse": rmse.item(),
+        "rmse_log": rmse_log.item(),
+        "a1": a1.item(),
+        "a2": a2.item(),
+        "a3": a3.item(),
+    }
 
      
 class DepthModel:

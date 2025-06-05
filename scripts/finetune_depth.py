@@ -8,17 +8,35 @@ import torch
 import torch.nn.functional as F
 from torch.optim import AdamW
 from torch.utils.data import DataLoader, Dataset
+from pathlib import Path
+
 from tqdm import tqdm
-from logger import Logger
+from scripts.logger import Logger
 from transformers import get_cosine_schedule_with_warmup
 
 import wandb
 from models.depth import DepthModel
-from models.depth import  ScaleInvariantLoss, compute_depth_metrics
+from models.depth import ScaleInvariantLoss, compute_depth_metrics
 from environment import Environment
 from camera import Camera
+from scripts.utils import read_pfm
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+env_config = "configs/env.yaml::open3d_small"
+cam_config = dict(
+    H=360,  # [px] Image height
+    W=640,  # [px] Image width
+    fovx=1.2217304763960306,  # [rad]
+)
+
+# Dataset parameters
+height_lims = [0.5, 2.0]  # [m] Camera height
+azimuth_lims = [0, 360.0]  # [deg] Sun azimuth
+elevation_lims = [10, 90.0]  # [deg] Sun elevation
+xlims = [-30, 30]  # [m] X limits
+ylims = [-20, 20]  # [m] Y limits
+n_train = 5000  # Increased from 1000
+n_val = 100  # Increased from 20
 def visualize_depth(depth, vmin=None, vmax=None):
     """Convert depth map to RGB visualization."""
     # Create a copy to avoid modifying the original
@@ -76,6 +94,26 @@ def create_visualization_grid(rgb, depth_gt, depth_pred, max_samples=4):
 
     return grid
 
+class LuDataset(Dataset):
+    def __init__(self, filenames):
+        self.img_paths = [os.path.join(img_dir, f) for f in filenames]
+        self.mask_paths = [os.path.join(mask_dir, f) for f in filenames]
+
+    def __len__(self):
+        return len(self.img_paths)
+
+    def __getitem__(self, idx):
+        # img = cv2.imread(self.img_paths[idx])
+        # mask = cv2.imread(self.mask_paths[idx])
+        # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        # mask = cv2.cvtColor(mask, cv2.COLOR_BGR2RGB)
+
+        # img_tensor = to_tensor(resize(Image.fromarray(img), (256, 256)))
+        # mask_class = rgb_to_class(mask)
+        # mask_tensor = torch.from_numpy(
+        #     np.array(resize(Image.fromarray(mask_class), (256, 256), Image.NEAREST))
+        # ).long()
+        return img_tensor, mask_tensor
 class Open3DDataset(Dataset):
     def __init__(
         self, n_images, cam_config, env_config, xlims, ylims, hlims, azlims, ellims, mode="train"
@@ -164,7 +202,7 @@ def train_depth_model(
         config = {
             "model_size": size,
             "learning_rate": learning_rate,
-            "weight_decay", weight_decay,
+            "weight_decay": weight_decay,
             "warmup_epochs": warmup_epochs,
             "num_epochs": num_epochs,
             "batch_size": train_loader.batch_size,
@@ -189,7 +227,7 @@ def train_depth_model(
     Logger.info(f"Freezing {n_frozen} parameters, {n_trainable} trainable", name = model.name)
     optimizer = AdamW(
         [
-            {"params:" [
+            {"params": [
                 param
                 for name, param in model.model.named_parameters()
                 if "neck" in name and param.requires_grad
@@ -251,7 +289,7 @@ def train_depth_model(
                 train_metrics[k] += v
             train_loss += loss.item()
             if batch_idx == 0:
-                grid = create_visualization_grid(rgb, depth_gt, depth_pred):
+                grid = create_visualization_grid(rgb, depth_gt, depth_pred)
                 wandb.log(
                     {
                         "train/visualization": wandb.Image(grid),
@@ -332,59 +370,64 @@ def train_depth_model(
     # Close wandb
     wandb.finish()
     
-        
-
-
-
     #Next Steps: Finish the training function, understand how the model is created and works,
     # Create the dataset, find a way to obtain the lusnar dataset, import the model mono4Depth
+
 def main():
     # Configuration ???where does this come from
-    env_config = "configs/env.yaml::open3d_small"
-    cam_config = dict(
-        H=360,  # [px] Image height
-        W=640,  # [px] Image width
-        fovx=1.2217304763960306,  # [rad]
-    )
+    
+    data_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../../shared/data_raw/LuSNAR/Moon_1/image0/'))
+    rgb_dir = os.path.join(data_path,'depth')
+    depth_dir = os.path.join(data_path, 'rgb')
+    # !!!Create but for the other datset.
+    dataset = "LuSNAR"
+    if dataset=="LuSNAR":
+        print(file)
+        root_dir = Path(data_path)
+        data_list = []
+        count = 0
+        for file in root_dir.glob("*.pfm"):    
+            added_path = '../../../../shared/data_raw/LuSNAR/Moon_1/image0/' + f"depth/{file}"
+            absolute_filepath = os.path.abspath(os.path.join(os.path.dirname(__file__),added_path))
+            if count == 0:
+                print(file)
+                print(added_path)
+                print(absolute_filepath)
+            
+            data_list.append(absolute_filepath)
+        image = read_pfm(data_list[0])
+        plt.imshow(image)
+        plt.show()
 
-    # Dataset parameters
-    height_lims = [0.5, 2.0]  # [m] Camera height
-    azimuth_lims = [0, 360.0]  # [deg] Sun azimuth
-    elevation_lims = [10, 90.0]  # [deg] Sun elevation
-    xlims = [-30, 30]  # [m] X limits
-    ylims = [-20, 20]  # [m] Y limits
-    n_train = 5000  # Increased from 1000
-    n_val = 100  # Increased from 20
-    print("hello")
 
-    # Create datasets
-    train_ds = Open3DDataset(
-        n_images=n_train,
-        cam_config=cam_config,
-        env_config=env_config,
-        xlims=xlims,
-        ylims=ylims,
-        hlims=height_lims,
-        azlims=azimuth_lims,
-        ellims=elevation_lims,
-        mode="train",
-    )
-    val_ds = Open3DDataset(
-        n_images=n_val,
-        cam_config=cam_config,
-        env_config=env_config,
-        xlims=xlims,
-        ylims=ylims,
-        hlims=height_lims,
-        azlims=azimuth_lims,
-        ellims=elevation_lims,
-        mode="val",
-    )
-    config = {
-        "class": "DepthTransformer",
-        "model": "depth_anything_v2",
-        "size": "small",
-    }
+    if dataset=="Open3D":
+        train_ds = Open3DDataset( 
+            n_images=n_train,
+            cam_config=cam_config,
+            env_config=env_config,
+            xlims=xlims,
+            ylims=ylims,
+            hlims=height_lims,
+            azlims=azimuth_lims,
+            ellims=elevation_lims,
+            mode="train",
+        )
+        val_ds = Open3DDataset(
+            n_images=n_val,
+            cam_config=cam_config,
+            env_config=env_config,
+            xlims=xlims,
+            ylims=ylims,
+            hlims=height_lims,
+            azlims=azimuth_lims,
+            ellims=elevation_lims,
+            mode="val",
+        )
+        config = {
+            "class": "DepthTransformer",
+            "model": "depth_anything_v2",
+            "size": "small",
+        }
      # Create dataloaders with increased batch size and workers
     train_loader = DataLoader(
         train_ds,
@@ -417,12 +460,6 @@ def main():
         size=config["size"],
         patience=5,
     )
-
-
-
-
-    
-
 
 if __name__ == "__main__":
     main()
