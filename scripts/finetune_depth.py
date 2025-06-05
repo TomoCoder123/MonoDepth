@@ -19,6 +19,35 @@ from environment import Environment
 from camera import Camera
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+def visualize_depth(depth, vmin=None, vmax=None):
+    """Convert depth map to RGB visualization."""
+    # Create a copy to avoid modifying the original
+    depth_viz = depth.copy()
+
+    # Replace NaN values with max value for visualization
+    if np.isnan(depth_viz).any():
+        valid_max = np.nanmax(depth_viz)
+        depth_viz[np.isnan(depth_viz)] = valid_max
+
+    if vmin is None:
+        vmin = np.nanmin(depth_viz)
+    if vmax is None:
+        vmax = np.nanmax(depth_viz)
+
+    # Normalize to [0, 1]
+    depth_norm = np.clip(depth_norm, 0, 1)
+
+    # Apply colormap
+    cmap = plt.cm.viridis
+    depth_colored = cmap(depth_norm)[..., :3]  # Remove alpha channel
+
+    # Create a mask for NaN values
+    nan_mask = np.isnan(depth)
+    if nan_mask.any():
+        # Set NaN regions to black in the visualization
+        depth_colored[nan_mask] = [0, 0, 0]
+
+    return (depth_colored * 255).astype(np.uint8)
 def create_visualization_grid(rgb, depth_gt, depth_pred, max_samples=4):
     """Create a vertical concatenation of RGB, GT depth, and predicted depth images."""
     # Convert tensors to numpy
